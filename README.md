@@ -1,6 +1,12 @@
-Test application for common.dll's INI_Reader
+# Test application for common.dll's INI_Reader
 
-mingw compile instructions:
+ini_reader_test.exe requires the following files from Freelancer/EXE:
+- common.dll
+- dacom.dll
+- dalib.dll
+- zlib.dll
+
+## MinGW cross-compile instructions:
 
 ```
 mkdir build
@@ -9,12 +15,6 @@ cmake -DCMAKE_TOOLCHAIN_FILE=../mingw-w64-i686.cmake ..
 make
 ```
 
-ini_reader_test.exe requires the following files from Freelancer/EXE:
-- common.dll
-- dacom.dll
-- dalib.dll
-- zlib.dll
-
 On my machine (Fedora 39), it requires the following files from `/usr/i686-w64-mingw32/sys-root/mingw/bin`:
 
 - libstdc++-6.dll
@@ -22,6 +22,28 @@ On my machine (Fedora 39), it requires the following files from `/usr/i686-w64-m
 - libgcc_s_dw2-1.dll
 
 Run with `wine ./ini_reader_test.exe test.ini`
+
+## Visual Studio compile instructions
+
+Load fini-reader-test.sln in Visual Studio and build
+
+Build output is in `build\<configuration>`
+
+Run with `.\ini_reader_test.exe test.ini`
+
+## Visual Studio Code compile instructions
+
+Ensure you have the C++ and CMake plugins installed
+
+Open the project using Open Folder
+
+Select CMake from the far left toolbar and build as x86
+
+Build output is in `build/src/<configuration>`
+
+Run with `.\ini_reader_test.exe test.ini`
+
+## Example
 
 Example output:
 
