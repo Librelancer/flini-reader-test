@@ -1,6 +1,7 @@
 // Code for wrapping the FL INI_Reader class in a GCC compatible class
 
 #include "Common.h"
+#include <stdio.h>
 #include <stdlib.h>
 
 static int Loaded = 0;
@@ -45,6 +46,11 @@ static void LoadFunctions()
     if(Loaded) return;
     
     HMODULE common = LoadLibraryA("common.dll");
+    if (!common) {
+        printf("Unable to load common.dll");
+        exit(1);
+    }
+
     IniCreate = (pIniVoid)GetProcAddress(common, "??0INI_Reader@@QAE@XZ");
     IniDestroy = (pIniVoid)GetProcAddress(common, "??1INI_Reader@@QAE@XZ");
     IniOpen = (pIniOpen)GetProcAddress(common, "?open@INI_Reader@@QAE_NPBD_N@Z");

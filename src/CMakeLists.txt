@@ -1,1 +1,1 @@
-add_executable(ini_reader_test main.cpp Common.cpp)
+add_executable(flini-reader-test main.cpp Common.cpp)

@@ -72,3 +72,11 @@ name_quote = "Quoted"
 e2 = 1.5
 ```
 
+### CSharp output requires a binary patch
+
+When using --csharp to create a XUnit test from a ini file you will need to apply a binary patch to dacom.dll. This is to prevent a modal Abort/Cancel/Ignore dialog box from appearing when the code is attempting to cast datatypes. 
+
+Open dacom.dll in your favourite hex editor (Notepad++ with the Hex-Editor plugin works well). 
+
+At address 0x2547 replace "68 12 00 04 00" with "eb 2c 90 90 90".
+This change executes a jump over the call to user32.dll which displays the dialog and is equivilent to clicking ignore in the dialog.
