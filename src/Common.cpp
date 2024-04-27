@@ -1,6 +1,7 @@
 // Code for wrapping the FL INI_Reader class in a GCC compatible class
 
 #include "Common.h"
+#include <stdio.h>
 #include <stdlib.h>
 
 static int Loaded = 0;
@@ -39,12 +40,38 @@ static pIniGetPtr IniGetNamePtr;
 static pIniGetPtr IniGetHeaderPtr;
 static pIniGetNumParameters IniGetNumParameters;
 
+const unsigned int DLL_TEXT_OFFSET = 0xc00;
+
+static void PatchBytes(LPVOID address, void* pData, DWORD pSize)
+{
+    DWORD dwOldProtection = 0;
+    VirtualProtect(address, pSize, PAGE_READWRITE, &dwOldProtection);
+    memcpy(address, pData, pSize);
+    VirtualProtect(address, pSize, dwOldProtection, &dwOldProtection);
+}
+
+// This patch inserts a jump over the call to user32.dll which displays 
+// a modal dialog in the event of an error when converting ini types
+// and results in the same as clicking ignore.
+static void ApplyPreventAbortRetryIgnoreDialog()
+{
+    const unsigned int dacom_patch_offset = DLL_TEXT_OFFSET + 0x2547;
+    static BYTE dacom_patch[] = { 0xeb, 0x2c, 0x90, 0x90, 0x90 };
+    HMODULE dacom = GetModuleHandleA("dacom.dll");
+    PatchBytes((BYTE*)dacom + dacom_patch_offset,
+        dacom_patch, sizeof(dacom_patch));
+}
 
 static void LoadFunctions()
 {
     if(Loaded) return;
     
     HMODULE common = LoadLibraryA("common.dll");
+    if (!common) {
+        printf("Unable to load common.dll");
+        exit(1);
+    }
+
     IniCreate = (pIniVoid)GetProcAddress(common, "??0INI_Reader@@QAE@XZ");
     IniDestroy = (pIniVoid)GetProcAddress(common, "??1INI_Reader@@QAE@XZ");
     IniOpen = (pIniOpen)GetProcAddress(common, "?open@INI_Reader@@QAE_NPBD_N@Z");
@@ -61,6 +88,8 @@ static void LoadFunctions()
     IniGetNumParameters = (pIniGetNumParameters)GetProcAddress(common, "?get_num_parameters@INI_Reader@@QBEIXZ");
     IniClose = (pIniVoid)GetProcAddress(common, "?close@INI_Reader@@QAEXXZ");
     Loaded = 1;
+
+    ApplyPreventAbortRetryIgnoreDialog();
 }
 
 #define SELF (*(void**)&this->data[0])
