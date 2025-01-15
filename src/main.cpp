@@ -71,10 +71,25 @@ char *str_escape(char *buffer, int buffer_size, const char *orig) {
     return buffer;
 }
 
+static void format_count_check(char *buffer, int buffer_size, const char *src, int count)
+{
+	if(count == 0) {
+		snprintf(buffer, buffer_size, "Assert.Empty(%s)", src);
+	} else if (count == 1) {
+		snprintf(buffer, buffer_size, "Assert.Single(%s)", src);
+	} else {
+		snprintf(buffer, buffer_size, "Assert.Equal(%d, %s.Count)", count, src);
+	}
+}
+
 void as_csharp(INI_Reader *reader, char *command_line, char *path) {
 	int header_count = 0;
 	char escape_buffer[1024];
 	int escape_buffer_len = sizeof(escape_buffer);
+	char count_buffer[256];
+	int count_buffer_len = sizeof(count_buffer);
+	char actual_buffer[256];
+	int actual_buffer_len = sizeof(actual_buffer);
 
 	// Replace \ with / in path for windows compatibility
 	replace_all(path, '\\', '/');
@@ -93,58 +108,59 @@ void as_csharp(INI_Reader *reader, char *command_line, char *path) {
 	printf("// This code was generated with the following command-line:\n// \t%s\n\n", command_line);
 	
 	printf("using System.Linq;\n\n");
-	printf("using FluentAssertions;\nusing Xunit;\n\n");
+	printf("using Xunit;\n\n");
 
 	printf("namespace LibreLancer.Tests.Ini;\n\n");
 	printf("public partial class IniTests\n{\n    [Fact]\n    public void %sTest()\n    {\n", test_name);
 	printf("        var ini = ParseFile(TestAsset.Open<IniTests>(\"%s\"), false, false).ToList();\n", filename);
 	while (reader->read_header()) {
-		printf("        ini[%d].Name.Should().Be(\"%s\");\n", 
-			header_count, 
-			str_escape(escape_buffer, escape_buffer_len, reader->get_header_ptr()));
+		printf("        Assert.Equal(\"%s\", ini[%d].Name);\n",
+			str_escape(escape_buffer, escape_buffer_len, reader->get_header_ptr()),
+			header_count);
 		int entry_count = 0;
 		while (reader->read_value()) {
-			printf("        ini[%d][%d].Name.Should().Be(\"%s\");\n", 
-				header_count, 
-				entry_count, 
-				str_escape(escape_buffer, escape_buffer_len, reader->get_name_ptr()));
+			printf("        Assert.Equal(\"%s\", ini[%d][%d].Name);\n",
+				str_escape(escape_buffer, escape_buffer_len, reader->get_name_ptr()),
+				header_count,
+				entry_count
+				);
 			int parms = reader->get_num_parameters();
-			printf("        ini[%d][%d].Should().HaveCount(%d);\n", 
-				header_count, 
-				entry_count, 
-				parms);
+			snprintf(actual_buffer, actual_buffer_len, "ini[%d][%d]", header_count, entry_count);
+			format_count_check(count_buffer, count_buffer_len, actual_buffer, parms);
+			printf("        %s;\n", count_buffer);
 			for (int i = 0; i < parms; i++) {
-				printf("        ini[%d][%d][%d].ToString().Should().Be(\"%s\");\n", 
-					header_count, 
-					entry_count, 
-					i, 
-					str_escape(escape_buffer, escape_buffer_len, reader->get_value_string((UINT)i)));
-				
-				printf("        ini[%d][%d][%d].ToBoolean().Should().Be(%s);\n", 
-					header_count, 
-					entry_count, 
-					i, 
-					reader->get_value_bool((UINT)i) ? "true" : "false");
-				printf("        ini[%d][%d][%d].ToInt32().Should().Be(%d);\n",
-					header_count, 
-					entry_count, 
-					i, 
-					reader->get_value_int((UINT)i));
-				printf("        ini[%d][%d][%d].ToSingle().Should().Be((float)%f);\n", 
-					header_count, 
-					entry_count, 
-					i, 
-					reader->get_value_float((UINT)i));
+				printf("        Assert.Equal(\"%s\", ini[%d][%d][%d].ToString());\n",
+					str_escape(escape_buffer, escape_buffer_len, reader->get_value_string((UINT)i)),
+					header_count,
+					entry_count,
+					i);
+
+				printf("        Assert.%s(ini[%d][%d][%d].ToBoolean());\n",
+					reader->get_value_bool((UINT)i) ? "True" : "False",
+					header_count,
+					entry_count,
+					i);
+
+				printf("        Assert.Equal(%d, ini[%d][%d][%d].ToInt32());\n",
+					reader->get_value_int((UINT)i),
+					header_count,
+					entry_count,
+					i);
+				printf("        Assert.Equal(%ff, ini[%d][%d][%d].ToSingle());\n",
+					reader->get_value_float((UINT)i),
+					header_count,
+					entry_count,
+					i);
 			}
 			entry_count++;
 		}
-		printf("        ini[%d].Count.Should().Be(%d);\n", 
-			header_count,
-			entry_count);
+		snprintf(actual_buffer, actual_buffer_len, "ini[%d]", header_count);
+		format_count_check(count_buffer, count_buffer_len, actual_buffer, entry_count);
+		printf("        %s;\n", count_buffer);
 		header_count++;
 	}
-	printf("        ini.Count.Should().Be(%d);\n", 
-			header_count);	
+	format_count_check(count_buffer, count_buffer_len, "ini", header_count);
+	printf("        %s;\n", count_buffer);
 	printf("    }\n}\n");
 }
 
